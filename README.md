@@ -1,1 +1,2 @@
-# daniel-man.github.io
+# Daniel Man
+Personal website for showcasing projects.
