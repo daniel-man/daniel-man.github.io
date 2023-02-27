@@ -1,0 +1,286 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    background-color: white;
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+  kbd {
+    color: #121212;
+  }
+</style>
+<title>CS 184 Mesh Edit</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']]
+    }
+  };
+</script>
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2023</h1>
+<h1 align="middle">Project 2: Mesh Edit</h1>
+<h2 align="middle">DANIEL MAN</h2>
+
+<br><br>
+
+    <div>
+
+        <h2 align="middle">Overview</h2>
+        <p>
+            This project walks through many of the fundamental aspects of geometric modeling. I started from implementing Bezier curves and surfaces using de Casteljau's algorithm, and later moved on to working with mesh edits and the Halfedge data structure. This involved implementing area-weighted vertex normals, core mesh operations like edge flip and edge split, and finally implementing the entirety of the loop subdivision algorithm for meshes.
+        </p>
+
+
+        <h2 align="middle">Section I: Bezier Curves and Surfaces</h2>
+
+        <h3 align="middle">Part 1: Bezier Curves with 1D de Casteljau Subdivision</h3>
+        <p>
+            To generate the Bezier curve below, I implemented de Casteljau's algorithm. This is a simple subdivision process that — given a set of n control points — applies linear interpolation n-1 times (once for each pair of connected control points) to determine the new n-1 control points that subdivide the lines connecting the original control points. These new intermediate control points are then connected to each other, and the algorithm is then applied recursively until only one control point is generated, which forms a point on the final Bezier curve.
+        </p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/part1.1.png" align="middle" width="500px" />
+                        <figcaption>Level 0</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part1.2.png" align="middle" width="500px" />
+                        <figcaption>Level 1</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part1.3.png" align="middle" width="500px" />
+                        <figcaption>Level 2</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part1.4.png" align="middle" width="500px" />
+                        <figcaption>Level 3</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part1.5.png" align="middle" width="500px" />
+                        <figcaption>Level 4</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part1.6.png" align="middle" width="500px" />
+                        <figcaption>Level 5</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part1.7.png" align="middle" width="500px" />
+                        <figcaption>Completed Bezier Curve</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part1.8.png" align="middle" width="500px" />
+                        <figcaption>Shifted Control Points and Modified t Parameter</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <br />
+        <br />
+
+        <h3 align="middle">Part 2: Bezier Surfaces with Separable 1D de Casteljau</h3>
+        <p>
+            I started by implementing the evlauateStep() function, which performs de Casteljau's algorithm exactly as described in the previous part, but now with a 3D point instead of a 2D one. I then implemented the evaluate1D() function, which begins with a vector of 3D points (the current vector), obtains a subdivision of that vector by running the evaluateStep() function on it (this becomes the new current vector), and then repeats this process until the current vector has length of 1 (meaning it contains only one point) and returns this point.
+        </p>
+        <p>
+            Finally, I implemented evaluate(), which iterates through every row of the grid of original control points (each row being a vector of 3D points), evaluating them at their u position using evaluate1D(row_vector, u), and adding this point to a temporary vector of 3D points. This temporary vector represents the "moving" Bezier curve, and calling evaluate1D(moving_curve, v) returns the final surface point.
+        </p>
+        <div align="middle">
+            <img src="images/part2.1.png" align="middle" width="500px" />
+            <figcaption><i>bez/teapot.bez</i></figcaption>
+        </div>
+
+        <br />
+
+
+        <h2 align="middle">Section II: Triangle Meshes and Half-Edge Data Structure</h2>
+
+        <h3 align="middle">Part 3: Area-Weighted Vertex Normals</h3>
+
+        <p>
+            To compute the area-weighted vertex normals, I iterated through the halfedges of the given vertex, using the halfedge's twin's face member to go through each face of the given vertex. For each face, I used normal() (which itself implements the computation of an area-weighted normal by using a cross product) to compute its area-weighted normal. I added these normals to a total 3D vector, and returned the normalized version of this total, which is the approximate unit normal at the given vertex.
+        </p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/part3.1.png" align="middle" width="500px" />
+                        <figcaption><i>dae/teapot.dae</i> with Flat Shading</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part3.2.png" align="middle" width="500px" />
+                        <figcaption><i>dae/teapot.dae</i> with Phong Shading</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+
+        <h3 align="middle">Part 4: Edge Flip</h3>
+        <p>
+            To perform an edge flip, I first updated the halfedge of the given edge as well as its twin: for both, I modified their next and vertex pointers accordingly. I then updated the other four interior halfedges of the two triangles, modifying their next, vertex, and face pointers accordingly. With the flip now complete, I returned the given edge pointer. Throughout the process, I did not use any particularly interesting implementation tricks; I simply adhered to the steps outlined in the spec.
+        </p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/part4.1.png" align="middle" width="500px" />
+                        <figcaption><i>dae/teapot.dae</i></figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part4.2.png" align="middle" width="500px" />
+                        <figcaption><i>dae/teapot.dae</i> with Edge Flips</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        
+
+
+        <h3 align="middle">Part 5: Edge Split</h3>
+        <p>
+            To perform an edge split, I essentially shortened the original edge (the one given to split on) so that it becomes one of the four internal edges. I then created three new edges (that would become the remaining three internal edges), six corresponding halfedges, two new faces, and finally one new vertex, m, whose position was set to the average of the positions of the two vertices of the original given edge. I then carefully reconnected all the original halfedges, modified the original faces, set the new halfedges, new vertices, new edges, and new faces accordingly, and finished by returning m. Throughout the process, I did not use any particularly interesting implementation tricks; I simply adhered to the steps outlined in the spec.
+        </p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/part5.1.png" align="middle" width="500px" />
+                        <figcaption><i>dae/teapot.dae</i></figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part5.2.png" align="middle" width="500px" />
+                        <figcaption><i>dae/teapot.dae</i> with Edge Splits</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part5.3.png" align="middle" width="500px" />
+                        <figcaption><i>dae/teapot.dae</i></figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part5.4.png" align="middle" width="500px" />
+                        <figcaption><i>dae/teapot.dae</i> with a combination of Edge Splits and Flips</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+
+        <h3 align="middle">Part 6: Loop Subdivision for Mesh Upsampling</h3>
+        <p>
+            To implement loop subdivision, I performed the following steps: First, I iterated through all the (original) vertices in the mesh. For each vertex, I calculated the sum of the positions of all of its neighboring vertices. I then determined the value of n (the degree of this vertex) and u (which is either 3/16 for degree 3 vertices or 3/8n otherwise), and used them to compute the new position of this vertex, stored temporarily in the vertex's newPosition field. 
+        </p>
+        <p>
+            Secondly, I iterated through all the edges in the mesh. For each edge, I computed the position of the new vertex that would be created in-between this edge when this edge gets split during the subdivision. I saved this position value in the edge's newPosition field. I also made sure to mark this edge as an original edge by setting its isNew field to false.
+        </p>
+        <p>
+            Thirdly, I iterated through all the original edges in the mesh. I called splitEdge() on each edge, and made sure to set the isNew field of each newly-created edge from the split accordingly. I also made sure to set the newly-created vertex's position to the position that was stored in the edge that got split in the second step, and marked this newly-created vertex's isNew field as true.
+        </p>
+        <p>
+            Fourthly, I iterated through all the newly-created edges in the mesh, and called flipEdge() on each edge IFF this edge connected an original vertex to a new vertex. Finally, I copied all the pre-computed vertex positions (stored in the newPosition field from the first step) into the vertex's actual position field.  
+        </p>
+        <p>
+            One interesting implementation trick I used was for the third step, where I needed a way to iterate through only the original edges in the mesh. For this, I noticed that the insert operation called by the splitEdge() function would only ever append to the end of the underlying linked list structure storing the edges of this mesh, and thus I could exclusively iterate over the original edges by only iterating through the first E edges, where E is the size of the list of the edges BEFORE starting the third step. 
+        </p>
+
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/part6.1.png" align="middle" width="500px" />
+                        <figcaption>No Loop Subdivision</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part6.2.png" align="middle" width="500px" />
+                        <figcaption>1 Iteration of Loop Subdivision</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part6.3.png" align="middle" width="500px" />
+                        <figcaption>2 Iterations of Loop Subdivision</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part6.4.png" align="middle" width="500px" />
+                        <figcaption>3 Iterations of Loop Subdivision</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part6.5.png" align="middle" width="500px" />
+                        <figcaption>4 Iterations of Loop Subdivision</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part6.6.png" align="middle" width="500px" />
+                        <figcaption>5 Iterations of Loop Subdivision</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p>
+            As evident from the above images, loop subdivision eventually removes sharp corners and edges. However, this behavior is not always desired; for example, the cube above now has a much rounder shape than we might desire. Furthermore, the shape of the cube has become slightly asymmetric after repeated subdivisions. To remedy this effect, we can pre-process the cube with edge flips and splits so that the edges of each face are symmetrical. This pre-processing ensures that the cube subdivides symmetrically, as demonstrated with the subdivisions below:
+        </p>
+
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/part6.7.png" align="middle" width="500px" />
+                        <figcaption>Preprocessed Cube with Symmetrical Faces</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part6.8.png" align="middle" width="500px" />
+                        <figcaption>1 Iteration of Loop Subdivision</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part6.9.png" align="middle" width="500px" />
+                        <figcaption>2 Iterations of Loop Subdivision</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part6.10.png" align="middle" width="500px" />
+                        <figcaption>3 Iterations of Loop Subdivision</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div align = "middle">
+            <span>Website:</span>
+            <a href="https://daniel-man.github.io/cs184-projects-webpages/proj2/index.html">https://daniel-man.github.io/cs184-projects-webpages/proj2/index.html</a>
+        </div>
+
+
+    </div></body>
+</html>
