@@ -1,0 +1,222 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    background-color: white;
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+  kbd {
+    color: #121212;
+  }
+</style>
+<title>CS 184 Path Tracer 2</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']]
+    }
+  };
+</script>
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+
+</head>
+
+
+<body>
+
+    <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2023</h1>
+    <h1 align="middle">Project 3-2: Path Tracer 2</h1>
+    <h2 align="middle">DANIEL MAN</h2>
+    <br />
+    <br />
+
+    <div>
+
+        <h2 align="middle">Overview</h2>
+        <p>
+            This is an extension to Project 3-1 where I added mirror and glass materials by implementing reflection and refraction. Also simulated a thin-lens model to implement depth-of-field, allowing for aperture and focal distance adjustments to the camera.
+        </p>
+
+        <h2 align="middle">Part 1: Mirror and Glass Materials</h2>
+
+        <h3>
+            Rendering <i>CBspheres.dae</i> with 256 samples per pixel, 4 samples per light, and various maximum ray depths:
+        </h3>
+        <!-- Example of including multiple figures -->
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/part1-spheres0.png" align="middle" width="480px" />
+                        <figcaption>Max Ray Depth of 0</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part1-spheres1.png" align="middle" width="480px" />
+                        <figcaption>Max Ray Depth of 1</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part1-spheres2.png" align="middle" width="480px" />
+                        <figcaption>Max Ray Depth of 2</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part1-spheres3.png" align="middle" width="480px" />
+                        <figcaption>Max Ray Depth of 3</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part1-spheres4.png" align="middle" width="480px" />
+                        <figcaption>Max Ray Depth of 4</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part1-spheres5.png" align="middle" width="480px" />
+                        <figcaption>Max Ray Depth of 5</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/part1-spheres6.png" align="middle" width="480px" />
+                        <figcaption>Max Ray Depth of 6</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/part1-spheres100.png" align="middle" width="480px" />
+                        <figcaption>Max Ray Depth of 100</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p>
+            Max Ray Depth of 0: With 0 bounces, the only visible element is the ceiling light.
+        </p>
+        <p>
+            Max Ray Depth of 1: With 1 bounce, we now have direct illumination. The spheres are still largely dark, however. The left sphere has a mirror surface, which means any light emitted from its surface to the camera is a reflection from somewhere else in the scene. Since the only place for light to come from is the ceiling light (with 0 bounces, the walls and ceiling cannot contribute light), the bright spot on the top of the sphere is the only light coming from this sphere. The glass ball on the right is similar, but has a slightly more blurry bright spot due to the random switching between reflecting and refracting; when the Schlick's reflection coefficient coin flip indicates a refraction should be used for a point, that point will be black instead of bright white, since the refraction point refracts the ray into the sphere with no light emitted outwards towards the camera.
+        </p>
+        <p>
+            Max Ray Depth of 2: With 2 bounces, the left sphere is now receiving incoming light from the walls and floor (still no ceiling since the ceiling is just now having light bounced to it and cannot bounce light back to the sphere), which it reflects back to the camera, making the mirror surface entirely visible for the first time. For the glass sphere, the same effect is occurring, but the points randomly assigned refraction are still largely black. This is because light can now come from the light source, refract/bounce once into the sphere, and refract/bounce a second time out of the sphere into the camera. However, this will only include light from the ceiling light itself, which is why the majority of the sphere is still dark (no light refracted through it from the walls or floor) with only the slightest strip of white at the bottom right corner (this is that light coming from the camera, bouncing two times in and out of the sphere, and going into the camera) .
+        </p>
+        <p>
+            Max Ray Depth of 3: With 3 bounces, light can finally come from the ceiling light, bounce off some wall or floor, bounce/refract into the right sphere, and finally bounce/refract out of the right sphere into the camera. As a result, the entire right sphere is lit up for the first time. Also observe the bright spot under the right sphere; this is light coming from the ceiling light, bouncing/refracting once into the sphere, bouncing/refracting once out of the sphere, and finally bouncing off the floor and into the camera. 
+        </p>
+        <p>
+            Max Ray Depth of 4: The only prominent difference in this scene is the small spot of light on the blue/right wall. This is light coming from the ceiling light, bouncing/refracting into the right sphere, bouncing/refracting out of the right sphere, bouncing off the floor, and finally bouncing off the right wall into the camera.
+        </p>
+        <p>
+            Max Ray Depth of 5-100: Not many significant differences from the ray depth of 4. With an overlaid comparison, one can notice the scene gradually becoming slightly brighter as more light bounces take place.
+        </p>
+        <br />
+
+        <h2 align="middle">Part 4: Depth of Field</h2>
+        <p>
+            The primary difference between the pinhole camera model and the thin-lens camera model implemented here is that the pinhole camera keeps everything in the scene, regardless of depth, in perfect focus. This is not an accurate representation of cameras in the real world, which have lenses with finite apertures and a specific plane of focus. The thin lens camera model is a better approximation of these real-world cameras (an approximation since it ignores the thickness of the lens itself); it introduces the lens element in between the image sensor and the scene, which defines a "plane of focus" that is parallel to the image sensor. Objects within this plane of focus (sitting focalDistance away from the lens) are in focus. Objects too much closer or too much farther than the plane of focus are out of focus. 
+        </p>
+
+        <h3>
+            Rendering <i>CBdragon.dae</i> with 256 samples per pixel, 4 samples per light, maximum ray depth of 12, 32 samples per batch and 0.05 tolerance for adaptive sampling, lens radius of 0.05, and varying focal distances:
+        </h3>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragonFront.png" width="100%" />
+                        <figcaption align="middle">Focal Distance: 0.667</figcaption>
+                        <figcaption align="middle">Focused on Bottom-Left Corner (closest point to camera on the red wall)</figcaption>
+                        <br />
+                    </td>
+                </tr>
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragonNose.png" width="100%" />
+                        <figcaption align="middle">Focal Distance: 1.269</figcaption>
+                        <figcaption align="middle">Focused on Dragon's Nose</figcaption>
+                        <br />
+                    </td>
+                </tr>
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragonBody.png" width="100%" />
+                        <figcaption align="middle">Focal Distance: 1.744</figcaption>
+                        <figcaption align="middle">Focused on Dragon's Body</figcaption>
+                        <br />
+                    </td>
+                </tr>
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragonTail.png" width="100%" />
+                        <figcaption align="middle">Focal Distance: 2.039</figcaption>
+                        <figcaption align="middle">Focused on Dragon's Tail</figcaption>
+                        <br />
+                    </td>
+                </tr>
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragonBack.png" width="100%" />
+                        <figcaption align="middle">Focal Distance: 3.017</figcaption>
+                        <figcaption align="middle">Focused on Back Corner (white and blue wall vertical edge)</figcaption>
+                        <br />
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <h3>
+            Rendering <i>CBdragon.dae</i> with 256 samples per pixel, 4 samples per light, maximum ray depth of 12, 32 samples per batch and 0.05 tolerance for adaptive sampling, focal distance of 2.240 (focused on the dragon's nose), and varying lens radius sizes:
+        </h3>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragon005.png" width="100%" />
+                        <figcaption align="middle">Aperture Size: 0.05</figcaption>
+                        <br />
+                    </td>
+                </tr>
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragon010.png" width="100%" />
+                        <figcaption align="middle">Aperture Size: 0.10</figcaption>
+                        <br />
+                    </td>
+                </tr>
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragon015.png" width="100%" />
+                        <figcaption align="middle">Aperture Size: 0.15</figcaption>
+                        <br />
+                    </td>
+                </tr>
+                <tr>
+                    <td align="middle">
+                        <img src="images/part4-dragon020.png" width="100%" />
+                        <figcaption align="middle">Aperture Size: 0.20</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p>Evidently, increasing the aperture size reduces the depth of field; the fourth image, with aperture of 0.20, has a much shallower depth of field than the first image with aperture of 0.05.</p>
+
+
+    </div>
+
+
+    </o>
+
+
+</body>
+</html>
